@@ -1,0 +1,188 @@
+<!DOCTYPE HTML>
+<HTML>
+<HEAD>
+<TITLE>HTML Template</TITLE>
+<META charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<META name = "Author" content="Samuel Douglass" />
+<META name="Date" content="Apr 3, 2022" />
+<META name="Description" content="simple text adventure game" />
+<SCRIPT type="text/javascript">
+var player = {'room': 'Bedroom','Bag': []}
+//dungeon structure from https://hackmd.io/@dethe/r1eH-CMdS
+var dungeon = {
+    'Bedroom': {
+        'name':'Bedroom',
+        'description': 'An unfamiliar bedroom. The only things of note are a boarded-up door to the north and the door to the south.',
+        'itemtxt': {'key': 'The key is still there. '+'<BR />'},
+        'contents': ['key'],
+        'opentxt':{'key': 'The door is now unlocked', 'crowbar': 'You pry off the boards covering the north door.'},
+        'exits': {'south': 'locked'}
+    },
+    'Hallway': {
+        'name': 'Hallway',
+        'description': 'You walk into an east-west hallway lit by bright torches. The bedroom is on the north side',
+        'itemtxt': {},
+        'contents': ['torch'],
+        'exits': {'north': 'Bedroom', 'east': 'Storage room', 'west':'Tower' }
+    },
+    'Storage room': {
+        'name': 'Storage room',
+        'description': 'You walk into what looks like a storage room. Stacks of wooden crates piled on the floor make the already small room feel even smaller.',
+        'itemtxt': {'crowbar': 'There is a crowbar on top of one of the crates'},
+        'contents': ['crowbar'],
+        'exits': {'west': 'Hallway'}
+    },
+    'Tower': {
+        'name':'Tower',
+         'description': 'You go through a door at the east end of the hall and onto a small landing of a stone tower. There\'s nothing but a spiral staircase and several \"windows\" which are just rectangular shaped holes in the stone walls.'+'<BR />'+'Stairs go both up and down, however, several stairs going up are missing, making them impossible to climb.' ,
+         'itemtxt': {},
+         'contents': [],
+         'opentxt':{},
+         'exits': {'east': 'Hallway', 'down': 'Bottom floor'}
+    },
+    'Closet': {
+        'name': 'Closet',
+        'description': 'A large walk-in closet filed with clothes.',
+        'itemtxt': {'sword': 'You see a medium sized sword propped up against the far wall'},
+        'contents': ['sword'],
+        'exits': {'south': 'Bedroom'}
+    },
+    'Bottom floor': {
+        'name':'Bottom floor',
+        'description': 'On your way down the staircase, you pass several doors. All of them are locked aside from the one at the very bottom. You exit at the base of the tower and walk into a pitch-black room. The darkness prevents you from seeing or doing anything.',
+        'itemtxt': {},
+        'contents': [],
+        'opentxt':{'torch': 'You use your torch to light the braziers around the room. Their light fully illuminates the room.'+'<BR />'+'The room is extremely large, but empty aside from a small slot in the center of the floor.', 'sword': 'You insert the sword'},
+        'exits': {'south': 'locked', 'up':'Tower'},
+    }
+
+};
+//starts the game with custom text
+function start() {
+    stats();
+    document.getElementById("roomText").innerHTML = "You awaken in an unknown, medievalesque bedroom. On the south side there is a closed door, and to the north there is a boarded-up doorway." + "<BR />" + "You notice a key on the nightstand, but the room is otherwise empty."
+
+}
+//updates the player's current room & inventory
+function stats() {
+    var html = "Location: " +player.room+"<BR />"+ "Inventory: "
+    if (player.Bag.length > 0) {
+        html += player.Bag[0]
+        for (let i = 1;i < player.Bag.length; i++)
+            html += ", "+player.Bag[i]
+            } else {
+                html += "Empty"};
+    document.getElementById("stats").innerHTML = html;
+}
+//displays the room description & text for any items left inside
+function roomText(){
+    let items = room['contents']
+    document.getElementById("roomText").innerHTML = room.description+"<BR />";
+    if (items != undefined){
+        for (let i=0; i<=items.length; i++){
+           if (room.itemtxt[items[i]]){
+                document.getElementById("roomText").innerHTML += room.itemtxt[items[i]];
+           } else {document.getElementById("roomText").innerHTML += ""}
+        }
+     } else {document.getElementById("roomText").innerHTML += "you see nothing of interest."}
+    stats();
+}
+//splits input & runs the proper function
+function onSubmit() {
+    var input = document.getElementById("text").value;
+    var split = input.toLowerCase().split(" ");
+    command = split[0]
+    obj = split[1]
+    room = dungeon[player["room"]];
+    if (obj == 'downstairs'){
+        obj='down'
+    } else if (obj == 'upstairs'){
+        obj == 'up'
+    }
+    switch (command){
+            case "move": walkcommand(obj); break;
+            case "walk": walkcommand(obj); break;
+            case "use": usecommand(obj); break;
+            case "take": takecommand(obj); break;
+            case "help": document.getElementById("response").innerHTML = "To play, submit a command followed by an object or direction. For example: \"walk east\" or \"take bucket.\" Available commands are: walk, use, and take "; break;
+            default: document.getElementById("response").innerHTML = "Didn't understand command"
+                    }
+}
+//moves the character
+function walkcommand(obj) {
+    if (room.exits[obj] == 'locked'){
+        document.getElementById("response").innerHTML = "The door is locked"
+    } else if (room.exits[obj]) {
+        player.room = room.exits[obj]
+        room = dungeon[player.room];
+        document.getElementById("response").innerHTML = "";
+    } else {
+        document.getElementById("response").innerHTML = "The way is blocked."}
+    roomText()
+}
+//checks conditions for using items & uses them if the conditions are met
+function usecommand(obj) {
+    let index = player['Bag'].indexOf(obj);
+    let exits= dungeon[player["room"]].exits
+    if (player.room == 'Bedroom' && index > -1 && room['opentxt'][obj]){
+        if (obj == 'key'){
+            exits.south='Hallway'
+            } else if (obj == 'crowbar') {
+                exits.north='Closet'
+                room.description='An unfamiliar bedroom. There are doors to the north and south.'
+            }
+        player['Bag'].splice(index, 1);
+        document.getElementById("response").innerHTML = "You use the "+obj+"!"+'<BR />'+room['opentxt'][obj];
+        stats();
+   } else if (player.room == 'Bottom floor' && index > -1 && room['opentxt'][obj]){
+       if(obj == 'torch'){
+           room.description='Light from the braziers fully illuminates the room. The room is fairly large but empty aside from a small, verical slit in the center of the room. '
+           player['Bag'].splice(index, 1);
+           document.getElementById("response").innerHTML = room['opentxt'][obj];
+           stats();
+        } else if (obj == 'sword') {
+            player['Bag'].splice(index, 1);
+            end();
+            }
+        } else if (index > -1) {
+            document.getElementById("response").innerHTML = "You can't use the "+obj+" here."
+        } else { 
+            document.getElementById("response").innerHTML = "You don't have a "+obj;
+        }
+}
+//takes item from room & puts it into inventory
+function takecommand(obj){
+    let index = room['contents'].indexOf(obj);
+    if (obj == 'torch' && index > -1){
+        room['contents'].splice(index, 1);
+        player['Bag'].push(obj);
+        dungeon['Bottom floor'].description = 'On your way down the staircase, you pass several doors. All of them are locked aside from the one at the very bottom. You exit at the base of the tower and walk into a pitch-black room. Thanks to the torch in your hand, you make out the shapes of several braziers throughout the room.'
+        document.getElementById("response").innerHTML = "You grab one of the torches from the wall."
+        stats();
+    } else if (index > -1) {
+        room['contents'].splice(index, 1);
+        player['Bag'].push(obj);
+        document.getElementById("response").innerHTML = "You put the "+obj+" in your bag."
+        stats();
+    } else { document.getElementById("response").innerHTML = "There is no "+obj+" to take"}
+}
+//function that displays text once the game is won
+function end(){
+    document.getElementById("stats").innerHTML = "<b>Congratulations! You have beaten the game!<b>"
+    document.getElementById("roomText").innerHTML = "The sword fits perfectly into the slit on the floor." +"<BR />"+"You thrust it in and hear a click."+"<BR />"+"The slabs of rock beneath your feet slide away, dropping you into complete darkness"
+    document.getElementById("response").innerHTML = "You have lost track of how long you have been in here."+"<BR />"+"The floor begins to move and the darkness begins to brighten as you hear a voice."+"<BR />"+"\"Hey you, you\'re finally awake....\""
+}
+</SCRIPT>
+</HEAD>
+<BODY onLoad="start();">
+<b>Welcome to Sam's text adventure game!</b> <BR />
+    For help, type "help" into the box below & submit. <Br />
+    <BR/>
+<DIV id="stats"></DIV> <BR />
+<DIV id="roomText"></DIV> <BR />
+<DIV id="response"></DIV> <BR />
+<INPUT type="text" id="text"/>
+<BUTTON id="submit" onClick="onSubmit();">Submit</BUTTON>
+</BODY>
+</HTML>
